@@ -1,0 +1,139 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "/tmet/UserProfileSchema",
+  "title": "UserProfile",
+  "type": "object",
+  "additionalProperties": false,
+  "definitions": {
+    "phone": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "MOBILE",
+            "HOME",
+            "OTHER"
+          ]
+        },
+        "number": {
+          "type": "string"
+        }
+      }
+    },
+    "address": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "HOME",
+            "WORK",
+            "OTHER"
+          ]
+        },
+        "country": {
+          "type": "string"
+        },
+        "province": {
+          "type": "string"
+        },
+        "city": {
+          "type": "string"
+        },
+        "zipCode": {
+          "type": "string"
+        },
+        "principalStreet": {
+          "type": "string"
+        },
+        "secondaryStreet": {
+          "type": "string"
+        },
+        "number": {
+          "type": "string"
+        },
+        "reference": {
+          "type": "string"
+        },
+        "isComplete": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "country",
+        "province",
+        "city"
+      ]
+    }
+  },
+  "properties": {
+    "username": {
+      "type": "string"
+    },
+    "firstName": {
+      "type": "string"
+    },
+    "lastName": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "phoneNumbers": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/definitions/phone"
+      }
+    },
+    "gender": {
+      "type": "string",
+      "enum": [
+        "M",
+        "F"
+      ]
+    },
+    "birthdate": {
+      "type": "number"
+    },
+    "address": {
+      "type": "object",
+      "$ref": "#/definitions/address"
+    },
+    "picture": {
+      "type": "string"
+    },
+    "profileCompleted": {
+      "type": "boolean"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "A",
+        "I"
+      ]
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "coordinator",
+        "admin"
+      ]
+    }
+  },
+  "required": [
+    "firstName",
+    "lastName",
+    "username",
+    "email",
+    "phoneNumbers",
+    "gender",
+    "birthdate",
+    "address",
+    "profileCompleted",
+    "type"
+  ]
+}

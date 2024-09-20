@@ -1,0 +1,100 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "title": "User",
+  "type": "object",
+  "additionalProperties": false,
+  "definitions": {
+    "commonProps": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "username": {
+          "type": "string"
+        },
+        "firstName": {
+          "type": "string"
+        },
+        "lastName": {
+          "type": "string"
+        },
+        "phoneNumbers": {
+          "type": "array",
+          "items": {
+            "$ref": "./src/schema/UserSchema.json#/definitions/phone",
+            "minLength": 1
+          }
+        },
+        "addresses": {
+          "type": "array",
+          "items": {
+            "$ref": "./src/schema/UserSchema.json#/definitions/address",
+            "minLength": 1
+          }
+        },
+        "birthday": {
+          "type": "number"
+        },
+        "gender": {
+          "type": "string",
+          "enum": [
+            "M",
+            "F"
+          ]
+        },
+        "picture": {
+          "type": "string"
+        },
+        "profileCompleted": {
+          "type": "boolean"
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "teacher",
+            "student"
+          ]
+        }
+      },
+      "required": [
+        "username",
+        "firstName",
+        "lastName",
+        "phoneNumbers",
+        "addresses",
+        "birthday",
+        "gender",
+        "profileCompleted"
+      ]
+    }
+  },
+  "oneOf": [
+    {
+      "$ref": "#/definitions/commonProps"
+    },
+    {
+      "allOf": [
+        {
+          "$ref": "#/definitions/commonProps"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "properties": {
+            "subjects": {
+              "type": "array",
+              "items": {
+                "$ref": "./src/shared/schema/SubjectSchema.json"
+              }
+            },
+            "description": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "asignatures"
+          ]
+        }
+      ]
+    }
+  ]
+}

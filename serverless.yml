@@ -1,0 +1,251 @@
+org: tmetsoft
+app: logis
+service: logis-usrv-user-manager
+
+provider:
+  name: aws
+  runtime: nodejs20.x
+  architecture: arm64
+  timeout: 29
+  stage: dev
+  logRetentionInDays: 7
+  deploymentBucket:
+    name: ${ssm:/GL/SERVERLESS_BUCKET}
+  httpApi:
+    cors: true
+    disableDefaultEndpoint: true
+
+  iam:
+    role:
+      statements:
+        - Effect: "Allow"
+          Action:
+            - dynamodb:GetItem
+            - dynamodb:PutItem
+            - dynamodb:Query
+            - dynamodb:UpdateItem
+          Resource: arn:aws:dynamodb:us-east-1:276033673656:table/test-table
+        - Effect: "Allow"
+          Action:
+            - cognito-idp:*
+          Resource:
+            Fn::Join:
+              - ""
+              - - "arn:aws:cognito-idp:us-east-1:"
+                - "Ref": "AWS::AccountId"
+                - ":userpool/"
+                - "Ref": "LogisUserPool"
+
+  environment:
+    NODE_OPTIONS: "--enable-source-maps"
+    STAGE: ${self:provider.stage}
+    CERTIFICATE_NAME: ${ssm:/GL/LOGIS_CERTIFICATE_NAME}
+    DOMAIN_NAME: ${ssm:/GL/LOGIS_DOMAIN_NAME}
+    FROM_EMAIL: ${ssm:${self:custom.prefix}/FROM_EMAIL}
+    POOL_ID:
+      Ref: LogisUserPool
+
+# you can add packaging information here
+#package:
+#  patterns:
+#    - '!exclude-me.js'
+#    - '!exclude-me-dir/**'
+#    - include-me.js
+#    - include-me-dir/**
+build:
+  esbuild:
+    bundle: true
+    minify: true
+    target: node20
+    sourcemap: true
+    # plugins: esbuild-plugins.js
+    exclude:
+      - "@aws-sdk/*"
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  prefix: /${self:provider.stage}/${self:service}
+  domains:
+    prod: api.logis.tmetsoft.com
+    dev: api-dev.logis.tmetsoft.com
+  customDomain:
+    http:
+      domainName: ${self:provider.environment.DOMAIN_NAME}
+      basePath: "user"
+      stage: ${self:provider.stage}
+      endpointType: REGIONAL
+      certificateName: ${self:provider.environment.CERTIFICATE_NAME}
+      createRoute53Record: false
+  CognitoAddCustomAttributes:
+    CognitoUserPoolIdOutputKey: "LogisUserPoolId"
+    CognitoUserPoolClientIdOutputKey: "LogisUserClientId"
+    CustomAttributes:
+      - AttributeDataType: String
+        DeveloperOnlyAttribute: False
+        Mutable: True
+        Name: "status"
+        Required: False
+      - AttributeDataType: String
+        DeveloperOnlyAttribute: False
+        Mutable: True
+        Name: "role"
+        Required: False
+
+plugins:
+  - serverless-cognito-add-custom-attributes
+  - serverless-domain-manager
+package:
+  individually: true
+  excludeDevDependencies: true
+  patterns:
+    - "!src/handler/*.LICENSE"
+    - "src/shared/schema/**"
+
+functions:
+  createUser:
+    handler: src/handler/CreateUserHandler.HANDLER
+    events:
+      - httpApi:
+          path: /create
+          method: post
+#    events:
+#      - httpApi:
+#          path: /users/create
+#          method: post
+#      - cognitoUserPool:
+#          pool: MyUserPool
+#          trigger: PreSignUp
+
+resources:
+  Resources:
+    LogisUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: ${self:provider.stage}-logis-user
+        #        UsernameAttributes: // Allow only login with email
+        #          - email
+        AliasAttributes:
+          - email
+          - preferred_username
+        Schema:
+          - AttributeDataType: String
+            DeveloperOnlyAttribute: False
+            Mutable: True
+            Name: "given_name"
+            Required: True
+          - AttributeDataType: String
+            DeveloperOnlyAttribute: False
+            Mutable: True
+            Name: "family_name"
+            Required: True
+          - AttributeDataType: String
+            DeveloperOnlyAttribute: False
+            Mutable: True
+            Name: "gender"
+            Required: False
+          - AttributeDataType: String
+            DeveloperOnlyAttribute: False
+            Mutable: True
+            Name: "phone_number"
+            Required: True
+          - AttributeDataType: String
+            DeveloperOnlyAttribute: False
+            Mutable: True
+            Name: "birthdate"
+            Required: False
+        AutoVerifiedAttributes:
+          - email
+        UsernameConfiguration:
+          CaseSensitive: False
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireLowercase: True
+            RequireNumbers: True
+            RequireSymbols: False
+            RequireUppercase: True
+            TemporaryPasswordValidityDays: 7
+        EmailConfiguration:
+          EmailSendingAccount: "DEVELOPER"
+          From: ${self:provider.environment.FROM_EMAIL}
+          SourceArn: ${ssm:${self:custom.prefix}/EMAIL_SES_ARN}
+        VerificationMessageTemplate:
+          DefaultEmailOption: "CONFIRM_WITH_CODE"
+          EmailMessage: "El código para ingresar a la aplicación Logis es: {####}"
+          EmailSubject: "Su código de verificación"
+          SmsMessage: "Su código de verificación para la aplicación Logis es: {####}"
+    LogisPoolClient:
+      Type: AWS::Cognito::UserPoolClient
+      Properties:
+        ClientName: ${self:service}_${self:provider.stage}-client
+        UserPoolId:
+          Ref: LogisUserPool
+        GenerateSecret: False
+        TokenValidityUnits:
+          AccessToken: "minutes"
+          IdToken: "minutes"
+          RefreshToken: "days"
+        AccessTokenValidity: 30
+        RefreshTokenValidity: 1
+        IdTokenValidity: 30
+        AllowedOAuthFlows:
+          - "implicit"
+        AllowedOAuthFlowsUserPoolClient: True
+        AllowedOAuthScopes:
+          - "phone"
+          - "email"
+          - "openid"
+          - "profile"
+          - "aws.cognito.signin.user.admin"
+        ExplicitAuthFlows:
+          - "ALLOW_ADMIN_USER_PASSWORD_AUTH"
+          - "ALLOW_CUSTOM_AUTH"
+          - "ALLOW_USER_PASSWORD_AUTH"
+          - "ALLOW_USER_SRP_AUTH"
+          - "ALLOW_REFRESH_TOKEN_AUTH"
+        CallbackURLs:
+          - "http://localhost:3000"
+        EnableTokenRevocation: False
+        PreventUserExistenceErrors: "ENABLED"
+        SupportedIdentityProviders:
+          - "COGNITO"
+        ReadAttributes:
+          - "given_name"
+          - "email"
+          - "family_name"
+          - "gender"
+          - "phone_number"
+          - "birthdate"
+        WriteAttributes:
+          - "given_name"
+          - "family_name"
+          - "gender"
+          - "phone_number"
+          - "birthdate"
+    AdminUserGroup:
+      Type: AWS::Cognito::UserPoolGroup
+      Properties:
+        GroupName: "Admin"
+        UserPoolId:
+          Ref: LogisUserPool
+    CoordinatorUserGroup:
+      Type: AWS::Cognito::UserPoolGroup
+      Properties:
+        GroupName: "Coordinator"
+        UserPoolId:
+          Ref: LogisUserPool
+    LogisDomainPool:
+      Type: AWS::Cognito::UserPoolDomain
+      Properties:
+        #        CustomDomainConfig:
+        #          CertificateArn: ${ssm:${self:custom.prefix}/CERTIFICATE_ARN}
+        #        Domain: "auth.logis.tmetsoft.com"
+        Domain: ${self:provider.stage}-logis-user
+        UserPoolId:
+          Ref: LogisUserPool
+  Outputs:
+    LogisUserPoolId:
+      Value:
+        Ref: LogisUserPool
+    LogisUserClientId:
+      Value:
+        Ref: LogisPoolClient

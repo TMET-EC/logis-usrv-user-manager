@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema#",
+  "$id": "/tmet/CreateUserValidator",
+  "type": "object",
+  "properties": {
+    "body": {
+      "$ref": "/tmet/UserProfileSchema"
+    }
+  },
+  "required": [
+    "body"
+  ]
+}
