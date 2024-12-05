@@ -11,11 +11,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "MOBILE",
-            "HOME",
-            "OTHER"
-          ]
+          "enum": ["MOBILE", "HOME", "OTHER"]
         },
         "number": {
           "type": "string"
@@ -28,11 +24,7 @@
       "properties": {
         "type": {
           "type": "string",
-          "enum": [
-            "HOME",
-            "WORK",
-            "OTHER"
-          ]
+          "enum": ["HOME", "WORK", "OTHER"]
         },
         "country": {
           "type": "string"
@@ -62,11 +54,7 @@
           "type": "boolean"
         }
       },
-      "required": [
-        "country",
-        "province",
-        "city"
-      ]
+      "required": ["country", "province", "city"]
     }
   },
   "properties": {
@@ -91,10 +79,7 @@
     },
     "gender": {
       "type": "string",
-      "enum": [
-        "M",
-        "F"
-      ]
+      "enum": ["M", "F"]
     },
     "birthdate": {
       "type": "number"
@@ -111,16 +96,17 @@
     },
     "status": {
       "type": "string",
-      "enum": [
-        "A",
-        "I"
-      ]
+      "enum": ["A", "I"]
     },
     "type": {
       "type": "string",
       "enum": [
-        "coordinator",
-        "admin"
+        "Admin",
+        "LogisticsCoordinator",
+        "CompanyManager",
+        "SalesManager",
+        "SiteEngineer",
+        "SiteManager"
       ]
     }
   },

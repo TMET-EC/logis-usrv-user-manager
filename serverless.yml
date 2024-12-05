@@ -89,6 +89,11 @@ custom:
         Mutable: True
         Name: "role"
         Required: False
+      - AttributeDataType: String
+        DeveloperOnlyAttribute: False
+        Mutable: True
+        Name: "companyId"
+        Required: False
 
 plugins:
   - serverless-cognito-add-custom-attributes
@@ -99,6 +104,7 @@ package:
   patterns:
     - "!src/handler/*.LICENSE"
     - "src/shared/schema/**"
+    - "package.json"
 
 functions:
   createUser:
@@ -227,10 +233,34 @@ resources:
         GroupName: "Admin"
         UserPoolId:
           Ref: LogisUserPool
-    CoordinatorUserGroup:
+    LogisticsCoordinatorUserGroup:
       Type: AWS::Cognito::UserPoolGroup
       Properties:
-        GroupName: "Coordinator"
+        GroupName: "LogisticsCoordinator"
+        UserPoolId:
+          Ref: LogisUserPool
+    CompanyManagerUserGroup:
+      Type: AWS::Cognito::UserPoolGroup
+      Properties:
+        GroupName: "CompanyManager"
+        UserPoolId:
+          Ref: LogisUserPool
+    SalesManagerUserGroup:
+      Type: AWS::Cognito::UserPoolGroup
+      Properties:
+        GroupName: "SalesManager"
+        UserPoolId:
+          Ref: LogisUserPool
+    SiteEngineerUserGroup:
+      Type: AWS::Cognito::UserPoolGroup
+      Properties:
+        GroupName: "SiteEngineer"
+        UserPoolId:
+          Ref: LogisUserPool
+    SiteManagerUserGroup:
+      Type: AWS::Cognito::UserPoolGroup
+      Properties:
+        GroupName: "SiteManager"
         UserPoolId:
           Ref: LogisUserPool
     LogisDomainPool:
