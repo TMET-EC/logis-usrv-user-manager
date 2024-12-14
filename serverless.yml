@@ -129,6 +129,7 @@ resources:
         UserPoolName: ${self:provider.stage}-logis-user
         #        UsernameAttributes: // Allow only login with email
         #          - email
+        UserPoolTier: ESSENTIALS
         AliasAttributes:
           - email
           - preferred_username
