@@ -1,30 +1,24 @@
 org: tmetsoft
 app: logis
 service: logis-usrv-user-manager
+frameworkVersion: ~4.x.x
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs22.x
   architecture: arm64
   timeout: 29
+  memorySize: 512
   stage: dev
-  logRetentionInDays: 7
+  logRetentionInDays: ${file(./slsBuildScript.js):logRetentionInDays}
   deploymentBucket:
     name: ${ssm:/GL/SERVERLESS_BUCKET}
   httpApi:
     cors: true
     disableDefaultEndpoint: true
-
   iam:
     role:
       statements:
-        - Effect: "Allow"
-          Action:
-            - dynamodb:GetItem
-            - dynamodb:PutItem
-            - dynamodb:Query
-            - dynamodb:UpdateItem
-          Resource: arn:aws:dynamodb:us-east-1:276033673656:table/test-table
         - Effect: "Allow"
           Action:
             - cognito-idp:*
@@ -35,45 +29,51 @@ provider:
                 - "Ref": "AWS::AccountId"
                 - ":userpool/"
                 - "Ref": "LogisUserPool"
-
   environment:
     NODE_OPTIONS: "--enable-source-maps"
     STAGE: ${self:provider.stage}
-    CERTIFICATE_NAME: ${ssm:/GL/LOGIS_CERTIFICATE_NAME}
-    DOMAIN_NAME: ${ssm:/GL/LOGIS_DOMAIN_NAME}
-    FROM_EMAIL: ${ssm:${self:custom.prefix}/FROM_EMAIL}
     POOL_ID:
       Ref: LogisUserPool
-
-# you can add packaging information here
-#package:
-#  patterns:
-#    - '!exclude-me.js'
-#    - '!exclude-me-dir/**'
-#    - include-me.js
-#    - include-me-dir/**
 build:
-  esbuild:
-    bundle: true
-    minify: true
-    target: node20
-    sourcemap: true
-    # plugins: esbuild-plugins.js
-    exclude:
-      - "@aws-sdk/*"
+  esbuild: false
+    # bundle: true
+    # minify: true
+    # platform: node
+    # target: node20
+    # sourcemap: true
+    # # packages: external
+    # # plugins: esbuild-plugins.js
+    # external:
+    #   - "@aws-sdk/*"
+    # packager: pnpm
 custom:
   stage: ${opt:stage, self:provider.stage}
   prefix: /${self:provider.stage}/${self:service}
-  domains:
-    prod: api.logis.tmetsoft.com
-    dev: api-dev.logis.tmetsoft.com
+  resourcesPrefix: ${self:provider.stage}-${self:service}
+  esbuild:
+    bundle: true
+    minify: true
+    platform: node
+    target: node22
+    sourcemap: true
+    # packages: external
+    # plugins: esbuild-plugins.js
+    external:
+      - "@aws-sdk/*"
+    packager: pnpm
+  buildVars: ${file(./slsBuildScript.js):slsBuild}
+  resources:
+    certificateName: ${ssm:/GL/LOGIS_CERTIFICATE_NAME}
+    domainName: ${ssm:/GL/LOGIS_DOMAIN_NAME}
+    fromEmail: ${self:custom.buildVars.fromEmail}
+    emailSesArn: ${self:custom.buildVars.emailSesArn}
   customDomain:
     http:
-      domainName: ${self:provider.environment.DOMAIN_NAME}
-      basePath: "user"
-      stage: ${self:provider.stage}
+      domainName: ${self:custom.resources.domainName}
+      basePath: user
+      # stage: ${self:provider.stage}
       endpointType: REGIONAL
-      certificateName: ${self:provider.environment.CERTIFICATE_NAME}
+      certificateName: ${self:custom.resources.certificateName}
       createRoute53Record: false
   CognitoAddCustomAttributes:
     CognitoUserPoolIdOutputKey: "LogisUserPoolId"
@@ -94,18 +94,16 @@ custom:
         Mutable: True
         Name: "companyId"
         Required: False
-
 plugins:
-  - serverless-cognito-add-custom-attributes
   - serverless-domain-manager
+  - serverless-esbuild
 package:
   individually: true
   excludeDevDependencies: true
   patterns:
-    - "!src/handler/*.LICENSE"
-    - "src/shared/schema/**"
+    - "!node_modules/**"
+    - "src/**"
     - "package.json"
-
 functions:
   createUser:
     handler: src/handler/CreateUserHandler.HANDLER
@@ -113,14 +111,6 @@ functions:
       - httpApi:
           path: /create
           method: post
-#    events:
-#      - httpApi:
-#          path: /users/create
-#          method: post
-#      - cognitoUserPool:
-#          pool: MyUserPool
-#          trigger: PreSignUp
-
 resources:
   Resources:
     LogisUserPool:
@@ -173,8 +163,8 @@ resources:
             TemporaryPasswordValidityDays: 7
         EmailConfiguration:
           EmailSendingAccount: "DEVELOPER"
-          From: ${self:provider.environment.FROM_EMAIL}
-          SourceArn: ${ssm:${self:custom.prefix}/EMAIL_SES_ARN}
+          From: ${self:custom.resources.fromEmail}
+          SourceArn: ${self:custom.resources.emailSesArn}
         VerificationMessageTemplate:
           DefaultEmailOption: "CONFIRM_WITH_CODE"
           EmailMessage: "El código para ingresar a la aplicación Logis es: {####}"
