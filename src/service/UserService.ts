@@ -3,18 +3,44 @@ import {
   AdminCreateUserCommandInput,
 } from "@aws-sdk/client-cognito-identity-provider";
 import { format, fromUnixTime } from "date-fns";
-import * as process from "process";
 import { ApiGatewayParsedEvent, TmetError } from "tmet-core";
 import * as CORE from "tmet-core";
 import { UserGroupsEnum } from "../shared/infrastructure/UserGroupsEnum";
 import { UserProfile } from "../shared/model/UserProfile";
 import { isEmpty, pathOr } from "remeda";
+import { Context, PreTokenGenerationV2TriggerEvent } from "aws-lambda";
+import { StringMap } from "aws-lambda/trigger/cognito-user-pool-trigger/_common";
 
 export class UserService {
   private readonly cognitoGtw: CORE.CognitoGateway;
 
   constructor() {
     this.cognitoGtw = new CORE.CognitoGateway();
+  }
+
+  public async addCustomClaims(
+    event: PreTokenGenerationV2TriggerEvent,
+    context: Context
+  ): Promise<void> {
+    const userAttributes = event.request.userAttributes;
+    const companyId = userAttributes["custom:companyId"];
+    const newClaims: StringMap | undefined = {
+      status: userAttributes["custom:status"],
+      role: userAttributes["custom:role"],
+    };
+
+    if (isEmpty(companyId)) {
+      newClaims["companyId"] = companyId;
+    }
+    event.response = {
+      claimsAndScopeOverrideDetails: {
+        idTokenGeneration: {},
+        accessTokenGeneration: {
+          claimsToAddOrOverride: newClaims,
+        },
+      },
+    };
+    context.done(undefined, event);
   }
 
   public async createUser(

@@ -49,6 +49,7 @@ build:
     # packager: pnpm
 custom:
   stage: ${opt:stage, self:provider.stage}
+  region: ${opt:region, "us-east-1"}
   prefix: /${self:provider.stage}/${self:service}
   resourcesPrefix: ${self:provider.stage}-${self:service}
   esbuild:
@@ -68,6 +69,7 @@ custom:
     domainName: ${ssm:/GL/LOGIS_DOMAIN_NAME}
     fromEmail: ${self:custom.buildVars.fromEmail}
     emailSesArn: ${self:custom.buildVars.emailSesArn}
+    customClaimsArn: ${self:custom.buildVars.customClaimsArn}
   customDomain:
     http:
       domainName: ${self:custom.resources.domainName}
@@ -113,6 +115,8 @@ functions:
       - httpApi:
           path: /create
           method: post
+  addCustomClaims:
+    handler: src/handler/AddCustomClaimsHandler.HANDLER
 resources:
   Resources:
     LogisUserPool:
@@ -122,6 +126,10 @@ resources:
         #        UsernameAttributes: // Allow only login with email
         #          - email
         UserPoolTier: ESSENTIALS
+        LambdaConfig:
+          PreTokenGenerationConfig:
+            LambdaArn: ${self:custom.resources.customClaimsArn}
+            LambdaVersion: V2_0
         AliasAttributes:
           - email
           - preferred_username
@@ -274,6 +282,7 @@ resources:
     LogisUserPoolId:
       Value:
         Ref: LogisUserPool
+
     LogisUserClientId:
       Value:
         Ref: LogisPoolClient

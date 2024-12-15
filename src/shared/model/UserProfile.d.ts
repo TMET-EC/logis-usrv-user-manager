@@ -15,7 +15,13 @@ export interface UserProfile {
   birthdate: number;
   companyId?: string;
   status: "active" | "inactive";
-  role: "Admin" | "LogisticsCoordinator" | "CompanyManager" | "SalesManager" | "SiteEngineer" | "SiteManager";
+  role:
+    | "Admin"
+    | "LogisticsCoordinator"
+    | "CompanyManager"
+    | "SalesManager"
+    | "SiteEngineer"
+    | "SiteManager";
 }
 export interface Phone {
   type?: "MOBILE" | "HOME" | "OTHER";
