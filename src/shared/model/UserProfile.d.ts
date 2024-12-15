@@ -10,31 +10,14 @@ export interface UserProfile {
   firstName: string;
   lastName: string;
   email: string;
-  /**
-   * @minItems 1
-   */
-  phoneNumbers: [Phone, ...Phone[]];
-  gender: "M" | "F";
+  phone: Phone;
+  gender?: "male" | "female";
   birthdate: number;
-  address: Address;
-  picture?: string;
-  profileCompleted: boolean;
-  status?: "A" | "I";
-  type: "Admin" | "LogisticsCoordinator" | "CompanyManager" | "SalesManager" | "SiteEngineer" | "SiteManager";
+  companyId?: string;
+  status: "active" | "inactive";
+  role: "Admin" | "LogisticsCoordinator" | "CompanyManager" | "SalesManager" | "SiteEngineer" | "SiteManager";
 }
 export interface Phone {
   type?: "MOBILE" | "HOME" | "OTHER";
   number?: string;
-}
-export interface Address {
-  type?: "HOME" | "WORK" | "OTHER";
-  country: string;
-  province: string;
-  city: string;
-  zipCode?: string;
-  principalStreet?: string;
-  secondaryStreet?: string;
-  number?: string;
-  reference?: string;
-  isComplete?: boolean;
 }

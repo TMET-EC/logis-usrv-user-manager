@@ -2,14 +2,13 @@ import {
   AdminAddUserToGroupCommandInput,
   AdminCreateUserCommandInput,
 } from "@aws-sdk/client-cognito-identity-provider";
-import * as console from "console";
 import { format, fromUnixTime } from "date-fns";
-import { get } from "lodash";
 import * as process from "process";
 import { ApiGatewayParsedEvent, TmetError } from "tmet-core";
 import * as CORE from "tmet-core";
 import { UserGroupsEnum } from "../shared/infrastructure/UserGroupsEnum";
 import { UserProfile } from "../shared/model/UserProfile";
+import { isEmpty, pathOr } from "remeda";
 
 export class UserService {
   private readonly cognitoGtw: CORE.CognitoGateway;
@@ -33,7 +32,7 @@ export class UserService {
     const user: UserProfile = event.body;
     try {
       await this._createCognitoUser(user);
-      await this._addUserToGroup(user.username, user.type);
+      await this._addUserToGroup(user.username, user.role);
       return { message: "Usuario creado exitosamente" };
     } catch (e) {
       console.log(e);
@@ -43,52 +42,59 @@ export class UserService {
 
   private async _createCognitoUser(user: UserProfile): Promise<boolean> {
     try {
+      const userAttr = [
+        {
+          Name: "email",
+          Value: user.email,
+        },
+        {
+          Name: "phone_number",
+          Value: user.phone.number,
+        },
+        {
+          Name: "gender",
+          Value: user.gender,
+        },
+        {
+          Name: "birthdate",
+          Value: format(fromUnixTime(user.birthdate), "yyyy-MM-dd"),
+        },
+        {
+          Name: "given_name",
+          Value: user.firstName,
+        },
+        {
+          Name: "family_name",
+          Value: user.lastName,
+        },
+        {
+          Name: "custom:status",
+          Value: "active",
+        },
+        {
+          Name: "custom:role",
+          Value: user.role,
+        },
+        {
+          Name: "email_verified",
+          Value: "true",
+        },
+      ];
+      if (!isEmpty(user.companyId)) {
+        userAttr.push({
+          Name: "custom:companyId",
+          Value: user.companyId,
+        });
+      }
       const newUser: AdminCreateUserCommandInput = {
         UserPoolId: process.env.POOL_ID,
         Username: user.username,
         DesiredDeliveryMediums: ["EMAIL"],
-        UserAttributes: [
-          {
-            Name: "email",
-            Value: user.email,
-          },
-          {
-            Name: "phone_number",
-            Value: user.phoneNumbers[0].number,
-          },
-          {
-            Name: "gender",
-            Value: user.gender,
-          },
-          {
-            Name: "birthdate",
-            Value: format(fromUnixTime(user.birthdate), "yyyy-MM-dd"),
-          },
-          {
-            Name: "given_name",
-            Value: user.firstName,
-          },
-          {
-            Name: "family_name",
-            Value: user.lastName,
-          },
-          {
-            Name: "custom:status",
-            Value: "active",
-          },
-          {
-            Name: "custom:role",
-            Value: "Coordinator",
-          },
-          {
-            Name: "email_verified",
-            Value: "true",
-          },
-        ],
+        UserAttributes: userAttr,
       };
       await this.cognitoGtw.createUser(newUser);
-    } catch (e) {
-      if (get(e, "name") === "UsernameExistsException")
+    } catch (e: any) {
+      if (pathOr(e, ["name"], "") === "UsernameExistsException")
         throw new TmetError({
           statusCode: 409,
           message:
@@ -104,14 +110,13 @@ export class UserService {
 
   private async _addUserToGroup(
     username: string,
-    type: string
+    role: string
   ): Promise<boolean> {
     try {
-      const group: string = this.getUserGroup(type);
       const request: AdminAddUserToGroupCommandInput = {
         UserPoolId: process.env.POOL_ID,
         Username: username,
-        GroupName: group,
+        GroupName: role,
       };
       await this.cognitoGtw.assignUserGroup(request);
     } catch (e) {

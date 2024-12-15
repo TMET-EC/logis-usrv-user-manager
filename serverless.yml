@@ -35,7 +35,8 @@ provider:
     POOL_ID:
       Ref: LogisUserPool
 build:
-  esbuild: false
+  esbuild:
+    false
     # bundle: true
     # minify: true
     # platform: node
@@ -88,7 +89,7 @@ custom:
         DeveloperOnlyAttribute: False
         Mutable: True
         Name: "role"
-        Required: False
+        Required: True
       - AttributeDataType: String
         DeveloperOnlyAttribute: False
         Mutable: True
@@ -97,6 +98,7 @@ custom:
 plugins:
   - serverless-domain-manager
   - serverless-esbuild
+  - serverless-cognito-add-custom-attributes
 package:
   individually: true
   excludeDevDependencies: true
@@ -165,11 +167,16 @@ resources:
           EmailSendingAccount: "DEVELOPER"
           From: ${self:custom.resources.fromEmail}
           SourceArn: ${self:custom.resources.emailSesArn}
+        AdminCreateUserConfig:
+          InviteMessageTemplate:
+            EmailMessage: "Bienvenido a LogiS su nombre de usuario es {username} y su contraseña temporal es {####} en la aplicación podrá asignar una nueva contraseña."
+            EmailSubject: "Contraseña temporal de acceso a la aplicación Logis"
+            SMSMessage: "Bienvenido a LogiS su nombre de usuario es {username} y su contraseña temporal es {####}"
         VerificationMessageTemplate:
           DefaultEmailOption: "CONFIRM_WITH_CODE"
-          EmailMessage: "El código para ingresar a la aplicación Logis es: {####}"
+          EmailMessage: "El código para ingresar a la aplicación LogiS es: {####}"
           EmailSubject: "Su código de verificación"
-          SmsMessage: "Su código de verificación para la aplicación Logis es: {####}"
+          SmsMessage: "Su código de verificación para la aplicación LogiS es: {####}"
     LogisPoolClient:
       Type: AWS::Cognito::UserPoolClient
       Properties:
