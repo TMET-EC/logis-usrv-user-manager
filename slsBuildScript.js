@@ -17,7 +17,12 @@ module.exports.slsBuild = async ({ options, resolveVariable }) => {
   // const stage = await resolveVariable('sls:stage');
   // const region = await resolveVariable('opt:region, self:provider.region, "us-east-1"');
   // const service = await resolveVariable('self:service');
-  return res;
+  return {
+    fromEmail: res.fromEmail,
+    emailSesArn: res.emailSesArn,
+    customClaimsArn: res.customClaimsArn,
+    certificateArn: res.certificateArn,
+  };
 };
 
 module.exports.logRetentionInDays = async ({ resolveVariable }) => {

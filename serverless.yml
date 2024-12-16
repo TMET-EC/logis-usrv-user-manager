@@ -29,6 +29,13 @@ provider:
                 - "Ref": "AWS::AccountId"
                 - ":userpool/"
                 - "Ref": "LogisUserPool"
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+            - lambda:InvokeAsync
+            - lambda:GetFunction
+            - lambda:EnableReplication
+          Resource: "arn:aws:lambda:${self:custom.region}:${aws:accountId}:function:*"
   environment:
     NODE_OPTIONS: "--enable-source-maps"
     STAGE: ${self:provider.stage}
@@ -278,11 +285,23 @@ resources:
         Domain: ${self:provider.stage}-logis-user
         UserPoolId:
           Ref: LogisUserPool
+    OnAddClaimsCognitoPermission:
+      Type: 'AWS::Lambda::Permission'
+      Properties:
+        Action: "lambda:InvokeFunction"
+        FunctionName: ${self:custom.resources.customClaimsArn}
+        Principal: "cognito-idp.amazonaws.com"
+        SourceArn:
+          Fn::Join:
+              - ""
+              - - "arn:aws:cognito-idp:us-east-1:"
+                - "Ref": "AWS::AccountId"
+                - ":userpool/"
+                - "Ref": "LogisUserPool"
   Outputs:
     LogisUserPoolId:
       Value:
         Ref: LogisUserPool
-
     LogisUserClientId:
       Value:
         Ref: LogisPoolClient

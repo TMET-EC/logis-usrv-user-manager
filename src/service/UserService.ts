@@ -8,7 +8,7 @@ import * as CORE from "tmet-core";
 import { UserGroupsEnum } from "../shared/infrastructure/UserGroupsEnum";
 import { UserProfile } from "../shared/model/UserProfile";
 import { isEmpty, pathOr } from "remeda";
-import { Context, PreTokenGenerationV2TriggerEvent } from "aws-lambda";
+import { PreTokenGenerationV2TriggerEvent } from "aws-lambda";
 import { StringMap } from "aws-lambda/trigger/cognito-user-pool-trigger/_common";
 
 export class UserService {
@@ -19,9 +19,8 @@ export class UserService {
   }
 
   public async addCustomClaims(
-    event: PreTokenGenerationV2TriggerEvent,
-    context: Context
-  ): Promise<void> {
+    event: PreTokenGenerationV2TriggerEvent
+  ): Promise<PreTokenGenerationV2TriggerEvent> {
     const userAttributes = event.request.userAttributes;
     const companyId = userAttributes["custom:companyId"];
     const newClaims: StringMap | undefined = {
@@ -29,7 +28,7 @@ export class UserService {
       role: userAttributes["custom:role"],
     };
 
-    if (isEmpty(companyId)) {
+    if (!isEmpty(companyId)) {
       newClaims["companyId"] = companyId;
     }
     event.response = {
@@ -40,7 +39,7 @@ export class UserService {
         },
       },
     };
-    context.done(undefined, event);
+    return event;
   }
 
   public async createUser(

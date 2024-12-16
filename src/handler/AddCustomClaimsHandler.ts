@@ -1,12 +1,12 @@
 import middy, { MiddyfiedHandler } from "@middy/core";
 import { UserService } from "../service/UserService";
 import inputOutputLogger from "@middy/input-output-logger";
-import { Context, PreTokenGenerationV2TriggerEvent } from "aws-lambda";
+import { PreTokenGenerationV2TriggerEvent } from "aws-lambda";
 
 const instanceUser = new UserService();
 const HANDLER: MiddyfiedHandler = middy(
-  (event: PreTokenGenerationV2TriggerEvent, context: Context) =>
-    instanceUser.addCustomClaims(event, context)
+  (event: PreTokenGenerationV2TriggerEvent) =>
+    instanceUser.addCustomClaims(event)
 ).use(inputOutputLogger());
 
 export { HANDLER };
