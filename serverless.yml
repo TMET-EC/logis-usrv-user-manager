@@ -9,7 +9,7 @@ provider:
   architecture: arm64
   timeout: 29
   memorySize: 512
-  stage: dev
+  stage: ${env:STAGE}
   logRetentionInDays: ${file(./slsBuildScript.js):logRetentionInDays}
   deploymentBucket:
     name: ${ssm:/${self:custom.stage}/GL/SERVERLESS_BUCKET}
@@ -98,7 +98,7 @@ custom:
         DeveloperOnlyAttribute: False
         Mutable: True
         Name: "role"
-        Required: True
+        Required: False
       - AttributeDataType: String
         DeveloperOnlyAttribute: False
         Mutable: True
