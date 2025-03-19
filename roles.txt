@@ -1,0 +1,10 @@
+Visualizacion y Edicion de todo: admin
+Visualizacion de todos los proyectos de su empresa: gerente, coordinador de proyecto, residente de obra, jefe de compras
+Edicion de info de todos: coordinador de logistica
+
+
+empresas sembra/heineker
+proyectos sembra
+proywctos heineken: drenajes, laboratorio/ dispensario
+
+constructora company y las empresas clients
