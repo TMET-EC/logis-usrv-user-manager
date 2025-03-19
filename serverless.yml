@@ -1,30 +1,24 @@
 org: tmetsoft
 app: logis
 service: logis-usrv-user-manager
+frameworkVersion: ~4.x.x
 
 provider:
   name: aws
-  runtime: nodejs20.x
+  runtime: nodejs22.x
   architecture: arm64
   timeout: 29
+  memorySize: 512
   stage: dev
-  logRetentionInDays: 7
+  logRetentionInDays: ${file(./slsBuildScript.js):logRetentionInDays}
   deploymentBucket:
-    name: ${ssm:/GL/SERVERLESS_BUCKET}
+    name: ${ssm:/${self:custom.stage}/GL/SERVERLESS_BUCKET}
   httpApi:
     cors: true
     disableDefaultEndpoint: true
-
   iam:
     role:
       statements:
-        - Effect: "Allow"
-          Action:
-            - dynamodb:GetItem
-            - dynamodb:PutItem
-            - dynamodb:Query
-            - dynamodb:UpdateItem
-          Resource: arn:aws:dynamodb:us-east-1:276033673656:table/test-table
         - Effect: "Allow"
           Action:
             - cognito-idp:*
@@ -35,45 +29,61 @@ provider:
                 - "Ref": "AWS::AccountId"
                 - ":userpool/"
                 - "Ref": "LogisUserPool"
-
+        - Effect: Allow
+          Action:
+            - lambda:InvokeFunction
+            - lambda:InvokeAsync
+            - lambda:GetFunction
+            - lambda:EnableReplication
+          Resource: "arn:aws:lambda:${self:custom.region}:${aws:accountId}:function:*"
   environment:
     NODE_OPTIONS: "--enable-source-maps"
     STAGE: ${self:provider.stage}
-    CERTIFICATE_NAME: ${ssm:/GL/LOGIS_CERTIFICATE_NAME}
-    DOMAIN_NAME: ${ssm:/GL/LOGIS_DOMAIN_NAME}
-    FROM_EMAIL: ${ssm:${self:custom.prefix}/FROM_EMAIL}
     POOL_ID:
       Ref: LogisUserPool
-
-# you can add packaging information here
-#package:
-#  patterns:
-#    - '!exclude-me.js'
-#    - '!exclude-me-dir/**'
-#    - include-me.js
-#    - include-me-dir/**
 build:
+  esbuild:
+    false
+    # bundle: true
+    # minify: true
+    # platform: node
+    # target: node20
+    # sourcemap: true
+    # # packages: external
+    # # plugins: esbuild-plugins.js
+    # external:
+    #   - "@aws-sdk/*"
+    # packager: pnpm
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  region: ${opt:region, "us-east-1"}
+  prefix: /${self:provider.stage}/${self:service}
+  resourcesPrefix: ${self:provider.stage}-${self:service}
   esbuild:
     bundle: true
     minify: true
-    target: node20
+    platform: node
+    target: node22
     sourcemap: true
+    # packages: external
     # plugins: esbuild-plugins.js
-    exclude:
+    external:
       - "@aws-sdk/*"
-custom:
-  stage: ${opt:stage, self:provider.stage}
-  prefix: /${self:provider.stage}/${self:service}
-  domains:
-    prod: api.logis.tmetsoft.com
-    dev: api-dev.logis.tmetsoft.com
+    packager: pnpm
+  buildVars: ${file(./slsBuildScript.js):slsBuild}
+  resources:
+    certificateName: ${ssm:/${self:custom.stage}/GL/LOGIS_CERTIFICATE_NAME}
+    domainName: ${ssm:/${self:custom.stage}/GL/LOGIS_DOMAIN_NAME}
+    fromEmail: ${self:custom.buildVars.fromEmail}
+    emailSesArn: ${self:custom.buildVars.emailSesArn}
+    customClaimsArn: ${self:custom.buildVars.customClaimsArn}
   customDomain:
     http:
-      domainName: ${self:provider.environment.DOMAIN_NAME}
-      basePath: "user"
-      stage: ${self:provider.stage}
+      domainName: ${self:custom.resources.domainName}
+      basePath: user
+      # stage: ${self:provider.stage}
       endpointType: REGIONAL
-      certificateName: ${self:provider.environment.CERTIFICATE_NAME}
+      certificateName: ${self:custom.resources.certificateName}
       createRoute53Record: false
   CognitoAddCustomAttributes:
     CognitoUserPoolIdOutputKey: "LogisUserPoolId"
@@ -88,24 +98,23 @@ custom:
         DeveloperOnlyAttribute: False
         Mutable: True
         Name: "role"
-        Required: False
+        Required: True
       - AttributeDataType: String
         DeveloperOnlyAttribute: False
         Mutable: True
         Name: "companyId"
         Required: False
-
 plugins:
-  - serverless-cognito-add-custom-attributes
   - serverless-domain-manager
+  - serverless-esbuild
+  - serverless-cognito-add-custom-attributes
 package:
   individually: true
   excludeDevDependencies: true
   patterns:
-    - "!src/handler/*.LICENSE"
-    - "src/shared/schema/**"
+    - "!node_modules/**"
+    - "src/**"
     - "package.json"
-
 functions:
   createUser:
     handler: src/handler/CreateUserHandler.HANDLER
@@ -113,14 +122,8 @@ functions:
       - httpApi:
           path: /create
           method: post
-#    events:
-#      - httpApi:
-#          path: /users/create
-#          method: post
-#      - cognitoUserPool:
-#          pool: MyUserPool
-#          trigger: PreSignUp
-
+  addCustomClaims:
+    handler: src/handler/AddCustomClaimsHandler.HANDLER
 resources:
   Resources:
     LogisUserPool:
@@ -130,6 +133,10 @@ resources:
         #        UsernameAttributes: // Allow only login with email
         #          - email
         UserPoolTier: ESSENTIALS
+        LambdaConfig:
+          PreTokenGenerationConfig:
+            LambdaArn: ${self:custom.resources.customClaimsArn}
+            LambdaVersion: V2_0
         AliasAttributes:
           - email
           - preferred_username
@@ -173,13 +180,18 @@ resources:
             TemporaryPasswordValidityDays: 7
         EmailConfiguration:
           EmailSendingAccount: "DEVELOPER"
-          From: ${self:provider.environment.FROM_EMAIL}
-          SourceArn: ${ssm:${self:custom.prefix}/EMAIL_SES_ARN}
+          From: ${self:custom.resources.fromEmail}
+          SourceArn: ${self:custom.resources.emailSesArn}
+        AdminCreateUserConfig:
+          InviteMessageTemplate:
+            EmailMessage: "Bienvenido a LogiS su nombre de usuario es {username} y su contraseña temporal es {####} en la aplicación podrá asignar una nueva contraseña."
+            EmailSubject: "Contraseña temporal de acceso a la aplicación Logis"
+            SMSMessage: "Bienvenido a LogiS su nombre de usuario es {username} y su contraseña temporal es {####}"
         VerificationMessageTemplate:
           DefaultEmailOption: "CONFIRM_WITH_CODE"
-          EmailMessage: "El código para ingresar a la aplicación Logis es: {####}"
+          EmailMessage: "El código para ingresar a la aplicación LogiS es: {####}"
           EmailSubject: "Su código de verificación"
-          SmsMessage: "Su código de verificación para la aplicación Logis es: {####}"
+          SmsMessage: "Su código de verificación para la aplicación LogiS es: {####}"
     LogisPoolClient:
       Type: AWS::Cognito::UserPoolClient
       Properties:
@@ -273,6 +285,19 @@ resources:
         Domain: ${self:provider.stage}-logis-user
         UserPoolId:
           Ref: LogisUserPool
+    OnAddClaimsCognitoPermission:
+      Type: 'AWS::Lambda::Permission'
+      Properties:
+        Action: "lambda:InvokeFunction"
+        FunctionName: ${self:custom.resources.customClaimsArn}
+        Principal: "cognito-idp.amazonaws.com"
+        SourceArn:
+          Fn::Join:
+              - ""
+              - - "arn:aws:cognito-idp:us-east-1:"
+                - "Ref": "AWS::AccountId"
+                - ":userpool/"
+                - "Ref": "LogisUserPool"
   Outputs:
     LogisUserPoolId:
       Value:
