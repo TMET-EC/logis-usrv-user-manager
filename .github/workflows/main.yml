@@ -1,11 +1,8 @@
-name: CI/CD Dev
+name: CI/CD Production
 
 on:
   push:
-    branches:
-      - release/**
-      - feature/**
-      - hotfix/**
+    branches: [ master ]
 
 jobs:
   deploy:
@@ -18,8 +15,7 @@ jobs:
       uses: actions/github-script@v7
       with:
         script: |
-          const branchAll = context.ref.split('/')
-          const stage = ( branchAll[2].toLowerCase() == 'release' || branchAll[2].toLowerCase() == 'hotfix') ? 'qa' : 'dev'
+          const stage = 'prod'
           core.exportVariable('GITHUB_STAGE', stage)
           core.exportVariable('GITHUB_REPO_NAME',context.payload.repository.name)
 
@@ -54,8 +50,8 @@ jobs:
     - name: Run tests
       run: pnpm run validate
 
-    - name: Deploy to AWS (Dev)
-      if: env.GITHUB_STAGE == 'dev'
+    - name: Deploy to AWS (Prod)
+      if: env.GITHUB_STAGE == 'prod'
       run: |
         pnpm sls deploy --region ${{env.AWS_REGION}} --stage ${{env.GITHUB_STAGE}}
       env:

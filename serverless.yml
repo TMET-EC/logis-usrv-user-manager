@@ -12,7 +12,7 @@ provider:
   stage: dev
   logRetentionInDays: ${file(./slsBuildScript.js):logRetentionInDays}
   deploymentBucket:
-    name: ${ssm:/GL/SERVERLESS_BUCKET}
+    name: ${ssm:/${self:custom.stage}/GL/SERVERLESS_BUCKET}
   httpApi:
     cors: true
     disableDefaultEndpoint: true
@@ -72,8 +72,8 @@ custom:
     packager: pnpm
   buildVars: ${file(./slsBuildScript.js):slsBuild}
   resources:
-    certificateName: ${ssm:/GL/LOGIS_CERTIFICATE_NAME}
-    domainName: ${ssm:/GL/LOGIS_DOMAIN_NAME}
+    certificateName: ${ssm:/${self:custom.stage}/GL/LOGIS_CERTIFICATE_NAME}
+    domainName: ${ssm:/${self:custom.stage}/GL/LOGIS_DOMAIN_NAME}
     fromEmail: ${self:custom.buildVars.fromEmail}
     emailSesArn: ${self:custom.buildVars.emailSesArn}
     customClaimsArn: ${self:custom.buildVars.customClaimsArn}
