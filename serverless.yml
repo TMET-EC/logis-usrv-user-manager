@@ -16,6 +16,20 @@ provider:
   httpApi:
     cors: true
     disableDefaultEndpoint: true
+    authorizers:
+      cognitoAuthorizer:
+        type: jwt
+        identitySource: "$request.header.Authorization"
+        issuerUrl:
+          Fn::Join:
+            - ""
+            - - "https://cognito-idp."
+              - "Ref": "AWS::Region"
+              - ".amazonaws.com/"
+              - "Ref": "LogisUserPool"
+        audience:
+          - "Ref": "LogisPoolClient"
+
   iam:
     role:
       statements:
@@ -122,6 +136,8 @@ functions:
       - httpApi:
           path: /create
           method: post
+          authorizer:
+            name: cognitoAuthorizer
   addCustomClaims:
     handler: src/handler/AddCustomClaimsHandler.HANDLER
 resources:
