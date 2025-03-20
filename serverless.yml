@@ -9,13 +9,27 @@ provider:
   architecture: arm64
   timeout: 29
   memorySize: 512
-  stage: dev
+  stage: ${env:STAGE}
   logRetentionInDays: ${file(./slsBuildScript.js):logRetentionInDays}
   deploymentBucket:
     name: ${ssm:/${self:custom.stage}/GL/SERVERLESS_BUCKET}
   httpApi:
     cors: true
     disableDefaultEndpoint: true
+    authorizers:
+      cognitoAuthorizer:
+        type: jwt
+        identitySource: "$request.header.Authorization"
+        issuerUrl:
+          Fn::Join:
+            - ""
+            - - "https://cognito-idp."
+              - "Ref": "AWS::Region"
+              - ".amazonaws.com/"
+              - "Ref": "LogisUserPool"
+        audience:
+          - "Ref": "LogisPoolClient"
+
   iam:
     role:
       statements:
@@ -98,7 +112,7 @@ custom:
         DeveloperOnlyAttribute: False
         Mutable: True
         Name: "role"
-        Required: True
+        Required: False
       - AttributeDataType: String
         DeveloperOnlyAttribute: False
         Mutable: True
@@ -122,6 +136,8 @@ functions:
       - httpApi:
           path: /create
           method: post
+          authorizer:
+            name: cognitoAuthorizer
   addCustomClaims:
     handler: src/handler/AddCustomClaimsHandler.HANDLER
 resources:

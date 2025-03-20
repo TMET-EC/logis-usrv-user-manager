@@ -19,7 +19,8 @@ jobs:
       with:
         script: |
           const branchAll = context.ref.split('/')
-          const stage = ( branchAll[2].toLowerCase() == 'release' || branchAll[2].toLowerCase() == 'hotfix') ? 'qa' : 'dev'
+          //const stage = ( branchAll[2].toLowerCase() == 'release' || branchAll[2].toLowerCase() == 'hotfix') ? 'qa' : 'dev'
+          const stage = 'dev'
           core.exportVariable('GITHUB_STAGE', stage)
           core.exportVariable('GITHUB_REPO_NAME',context.payload.repository.name)
 
@@ -59,6 +60,7 @@ jobs:
       run: |
         pnpm sls deploy --region ${{env.AWS_REGION}} --stage ${{env.GITHUB_STAGE}}
       env:
+        STAGE: ${{ env.GITHUB_STAGE }}
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         SERVERLESS_ACCESS_KEY: ${{secrets.SERVERLESS_ACCESS_KEY}}
